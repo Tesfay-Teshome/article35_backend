@@ -37,5 +37,31 @@ def user_index(id):
 	users = user.query.all()
 	return user_schema.jsonify(users, many=True), 200
 
-@router.route('/users', methods=['GET'])
-def user_index():
+@router.route('/users/<int:id>', methods=['GET'])
+def user_single(id):
+	user = User.query.get(id)
+
+    if not user:
+    	return { 'message': 'User not available' }, 404
+
+    return populate_user.jsonify(user), 200
+
+@router.route('/update_user', methods=['PUT'])
+@secure_route
+def update_user_genre():
+	req = request.get_json()
+	existing_user = User.query.get(g.current_user.id)
+
+	print(req)
+	try:
+		user = populate_user.load(
+			req,
+			instance=existing_user,
+			partial=True 
+		)
+    except ValidationError as e:
+       	return { 'errors': e.messages, 'message': 'Something went wrong.' }
+
+    user.save()
+
+    return populate_user.jsonify(user), 200
