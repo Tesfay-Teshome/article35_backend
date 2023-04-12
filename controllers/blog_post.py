@@ -4,7 +4,7 @@ from models.comments import Comment, NastedComment
 from serializers.blogs import BlogsSchema, PopulateBlogSchema
 from serializers.comments import CommetSchema, NestedCommentSchema
 from securerouter.secure_route import secure_route
-from marshmellow import ValidationError
+from marshmallow import ValidationError
 
 blog_schema = BlogsSchema()
 populate_blog = PopulateBlogSchema()
