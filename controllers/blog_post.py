@@ -43,7 +43,7 @@ def create():
 	try:
 		blog = populate_blog.load(blog_dictionary)
 	except ValidationError as e:
-		return{'errors': e.messages, 'message': 'Somthing went wrong.'}, 401
+		return{'errors': e.messages, 'message': 'Something went wrong.'}, 401
 
 	blog.save()
 
@@ -63,7 +63,7 @@ def update_blog(id):
 		  partial=True
 	    )
 	except ValidationError as e:
-		return {'errors': e.message, 'message': 'Somthing went wrong.'}
+		return {'errors': e.message, 'message': 'Something went wrong.'}
 
 	if blog.user != g.current_user:
 		return {'message': 'Unauthorized User' }, 401
@@ -77,9 +77,111 @@ def update_blog(id):
 def remove(id):
 	blog = Blog.query.get(id)
 
-	if video.user != g.current_user:
+	if blog.user != g.current_user:
 		return {'message': 'Unauthorized User'}, 401
 
 	blog.remove()
-	return {'message':}
+	return {'message': f'Blog {id}--deleted Successfuly'}
 
+# Post a comment
+
+@router.route('blogs/<int:id>/comments', methods=['POST'])
+@secure_route
+def comment_create(blog_id):
+	comment_data = request.get_json()
+	blog = Blog.query.get(blog_id)
+	comment = comment_schema.load(comment_data)
+	comment.blog = blog
+	comment.user.id = g.current_user.id
+	comment.save()
+	return populate_blog.jsonify(blog), 200
+
+# Get one comment
+@router.route('comments/<int:id>', methods=['GET'])
+def get_single_comment(id):
+	comment = Comment.query.get(id)
+
+    
+    if not comment:
+    	return {'message': 'Blog is not available'}, 404
+
+    return comment_schema.jsonify(comment), 200
+
+# Delete a Comment
+
+@router.route('/comments/<int:id>', methods=['DELETE'])
+@secure_route
+def removeComment(id):
+	comment = Comment.query.get(id)
+	blog_id = comment.blog_id
+	blog = Blog.query.get(blog_id)
+
+	if comment.user != g.current_user:
+		return{'message': 'Unauthorized User'}, 401
+	comment.remove()
+
+	return populate_blog.jsonify(blog), 200
+
+# Edit a Comment
+
+@router.route('/comments/<int:id>', methods=['PUT'])
+@secure_route
+def update_comment(id):
+
+	existing_comment = Comment.query.get(id)
+
+	try:
+		comment = comment_schema.load(
+			request.get_json(),
+			instance=existing_comment,
+			partial=True
+		)
+	except ValidationError as e:
+		return{'errors': e.messages, 'message': 'Something went worng'}
+
+	if comment.user != g.current_user:
+		return { 'message': 'Unauthorized User' }, 401
+
+	comment.save()
+
+	return {'message': 'Comment updated' }, 201
+
+# Nested comment
+
+@router.route('/comments/<int:id>/nested', methods=['POST'])
+@secure_route
+def create_nested(comment_id):
+	nested_comment_data = request.get_json()
+	comment = Comment.query.get(comment_id)
+	if not comment:
+		return { 'message': 'Comment not available' }, 404
+
+	nested_comment = nested_comment_schema.load(nested_comment_data)
+	nested_comment.comment = comment
+	nested_comment.user_id = g.current_user
+	nested_comment.comment_id = comment_id
+	nested_comment.save()
+
+	blog = Blog.query.get(comment.blog_id)
+
+	return populate_blog.jsonify(blog), 200
+
+# Delete nested comment
+
+@router.route('/comments/<int:comment_id>/<int:nested_id>', methods=['DELETE'])
+@secure_route
+def removeNestedComment(comment_id, nested_id):
+    nested_comment = NestedComment.query.get(nested_id)
+
+    if not nested_comment:
+    	return { 'message': 'Comment not available' }, 404
+
+    blog_id = comment.blog_id
+    blog = Blog.query.get(blog_id)
+
+    if nested_comment.user != g.current_user:
+    	return { 'message': 'Unauthorized User' }, 401
+
+    nested_comment.remove()
+
+    return populate_blog.jsonify(blog), 200
